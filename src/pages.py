@@ -40,10 +40,12 @@ from src.parlay import (
 from src.database import (
     add_bet,
     add_team,
+    clear_all_bets,
     delete_bet,
     get_all_bets,
     get_setting,
     get_unique_matches,
+    import_bets_from_records,
     parse_date,
     quick_settle_bet,
     set_setting,
@@ -1989,6 +1991,7 @@ def render_settings() -> None:
 
     with tab_data:
         st.markdown("#### Export / Import")
+        from src.csv_import import parse_csv_backup
         from src.excel_export import generate_excel_workbook
 
         excel_bytes = generate_excel_workbook()
@@ -2013,6 +2016,38 @@ def render_settings() -> None:
                 use_container_width=True,
             )
 
+        st.markdown("##### Restore from CSV")
+        st.caption(
+            "Upload a **Download CSV Backup** file from this app (e.g. from your laptop) "
+            "to restore bets here."
+        )
+        uploaded_csv = st.file_uploader(
+            "Upload CSV backup",
+            type=["csv"],
+            key="csv_backup_upload",
+        )
+        if uploaded_csv is not None:
+            records, parse_errors = parse_csv_backup(uploaded_csv.getvalue())
+            for err in parse_errors:
+                st.warning(err)
+            if records:
+                existing_count = len(get_all_bets())
+                st.info(f"Found **{len(records)}** bets ready to import.")
+                if existing_count:
+                    st.caption(f"You currently have {existing_count} bets in this app.")
+                replace_existing = st.checkbox(
+                    "Replace existing bets before import",
+                    value=existing_count > 0,
+                    help="Clears all current bets, then imports the CSV. "
+                    "Leave unchecked to add imported bets alongside existing ones.",
+                )
+                if st.button("Import CSV backup", type="primary", key="import_csv_btn"):
+                    if replace_existing and existing_count:
+                        clear_all_bets()
+                    imported = import_bets_from_records(records)
+                    st.success(f"Imported {imported} bets successfully.")
+                    st.rerun()
+
         st.divider()
         st.markdown("#### Danger Zone")
         if st.button("Clear All Bets", type="secondary"):
@@ -2021,7 +2056,6 @@ def render_settings() -> None:
         if st.session_state.get("confirm_clear"):
             st.warning("This will permanently delete all bets. Are you sure?")
             if st.button("Yes, delete all bets"):
-                from src.database import clear_all_bets
                 clear_all_bets()
                 st.session_state.pop("confirm_clear", None)
                 st.success("All bets cleared.")
