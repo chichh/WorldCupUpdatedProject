@@ -23,6 +23,13 @@ from src.calculations import enrich_bets
 from src.database import get_all_bets, get_setting
 
 
+def _text(value) -> str:
+    """Coerce a cell value to a safe Excel string (NaN/None → empty)."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value)
+
+
 def _write_lists_sheet(workbook, formats):
     ws = workbook.add_worksheet("Lists")
     ws.hide()
@@ -140,12 +147,12 @@ def _add_bet_log_sheet(workbook, formats, bets_df: pd.DataFrame):
             row = start_row + i
             ws.write(row, 0, bet.get("id", i + 1))
             ws.write(row, 1, str(bet.get("match_date", ""))[:10], formats["date"])
-            ws.write(row, 2, bet.get("group_stage", ""))
-            ws.write(row, 3, bet.get("team1", ""))
-            ws.write(row, 4, bet.get("team2", ""))
-            ws.write(row, 5, bet.get("bet_type", ""))
-            ws.write(row, 6, bet.get("bet_category", "Main Challenge"))
-            ws.write(row, 7, bet.get("prediction", ""))
+            ws.write(row, 2, _text(bet.get("group_stage")))
+            ws.write(row, 3, _text(bet.get("team1")))
+            ws.write(row, 4, _text(bet.get("team2")))
+            ws.write(row, 5, _text(bet.get("bet_type")))
+            ws.write(row, 6, _text(bet.get("bet_category")) or "Main Challenge")
+            ws.write(row, 7, _text(bet.get("prediction")))
             ws.write(row, 8, float(bet.get("bet_amount", DEFAULT_BET_AMOUNT)), formats["currency"])
             if bet.get("effective_odds") and pd.notna(bet.get("effective_odds")):
                 ws.write(row, 9, float(bet["effective_odds"]))
@@ -153,17 +160,17 @@ def _add_bet_log_sheet(workbook, formats, bets_df: pd.DataFrame):
             if pot is not None and pd.notna(pot):
                 ws.write(row, 12, float(pot), formats["currency"])
             ws.write(row, 13, "Yes" if bet.get("cashed_out") else "No")
-            ws.write(row, 14, bet.get("status", "Pending"))
+            ws.write(row, 14, _text(bet.get("status")) or "Pending")
             cashout = bet.get("cashout_amount")
             payout = bet.get("payout_amount")
             if cashout is not None and pd.notna(cashout):
                 ws.write(row, 15, float(cashout), formats["currency"])
             if payout is not None and pd.notna(payout):
                 ws.write(row, 16, float(payout), formats["currency"])
-            ws.write(row, 19, bet.get("final_score") or "")
-            ws.write(row, 20, bet.get("actual_result") or "")
-            ws.write(row, 21, bet.get("actual_goalscorer") or "")
-            ws.write(row, 22, bet.get("notes") or "")
+            ws.write(row, 19, _text(bet.get("final_score")))
+            ws.write(row, 20, _text(bet.get("actual_result")))
+            ws.write(row, 21, _text(bet.get("actual_goalscorer")))
+            ws.write(row, 22, _text(bet.get("notes")))
 
     ws.freeze_panes(1, 0)
     return ws
@@ -184,12 +191,12 @@ def _add_match_results_sheet(workbook, formats, bets_df: pd.DataFrame):
         )
         for i, (_, m) in enumerate(matches.iterrows(), start=1):
             ws.write(i, 0, str(m["match_date"])[:10], formats["date"])
-            ws.write(i, 1, m["group_stage"])
-            ws.write(i, 2, m["team1"])
-            ws.write(i, 3, m["team2"])
-            ws.write(i, 4, m.get("final_score") or "")
-            ws.write(i, 5, m.get("actual_result") or "")
-            ws.write(i, 6, m.get("actual_goalscorer") or "")
+            ws.write(i, 1, _text(m["group_stage"]))
+            ws.write(i, 2, _text(m["team1"]))
+            ws.write(i, 3, _text(m["team2"]))
+            ws.write(i, 4, _text(m.get("final_score")))
+            ws.write(i, 5, _text(m.get("actual_result")))
+            ws.write(i, 6, _text(m.get("actual_goalscorer")))
 
     ws.set_column(0, 6, 16)
     ws.freeze_panes(1, 0)
